@@ -1,0 +1,32 @@
+default:
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker info
+
+image: docker:latest
+
+stages:
+  - build
+# A Docker container is used to execute the tests. Below specifies the Docker image to use.
+
+image: ansible_local:latest
+
+# Install any required python packages needed for the scripts
+before_script:
+  - pip install requests
+
+services:
+  - docker:dind
+
+build_nso:
+  stage: build
+  # Run deploy_prod stage only when branch is master
+  only:
+    - main
+  script:
+    - echo $PWD
+    - docker load -i pipeline_utils/nso-6.2.5.container-image-dev.linux.x86_64.tar.gz
+    - docker compose -f pipeline_utils/compose.yml up -d
+
