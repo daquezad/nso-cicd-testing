@@ -59,10 +59,27 @@ release-publishing-📦:
     - main
   script:
     - echo "(Deliver 📦) Generating zip"
+    - "echo 'test' > file.txt"
+  artifacts:
+    expose_as: 'artifact 1'
+    paths: ['file.txt']
 
   # artifacts:
   #   when: on_success
   #   paths:
   #    - $CI_PROJECT_DIR/package-artifact/nso-packages_$CI_COMMIT_REF_NAME.tar.gz
 
+cleanup-🗑️:
+  stage: cleanup
+  when: always
+  allow_failure: true
+  script:
+    - echo "(Cleanup 🗑️) Removing files from NSO Dev"
 
+deploy-production-📬:
+  stage: deploy
+  when: on_success
+  only:
+    - main
+  script:
+    - echo "(Deploy 📬) Deployment in production.
