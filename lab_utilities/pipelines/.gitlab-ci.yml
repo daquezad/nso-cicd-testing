@@ -1,32 +1,68 @@
-default:
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  before_script:
-    - docker info
+# NSO-cicd-automated testing
+# Author: @daquezad
+#
+# Pipeline definition for gitlab-runner
+#
+# This pipeline defined gives a practical example of the steps and workflow for updating, testing, and deploying an NSO service package.
 
-image: docker:latest
+include:
+  - '/pipeline_utils/environments.yml' 
 
 stages:
-  - build
-# A Docker container is used to execute the tests. Below specifies the Docker image to use.
+  - build 
+  - test 
+  - deliver
+  - cleanup
+  - deploy_prod
 
-image: ansible_local:latest
+variables:
+    NSO_TESTING_URL:  "http://10.10.20.47:8080/jsonrpc"
+    NSO_DEVELOPMENT_URL:  "http://10.10.20.47:8080/jsonrpc"
+    NSO_PRODUCTION_URL: "http://10.10.20.47:8080/jsonrpc"
 
 # Install any required python packages needed for the scripts
 before_script:
   - pip install requests
+  - ansible-galaxy collection install cisco.nso
 
-services:
-  - docker:dind
-
-build_nso:
-  stage: build
-  # Run deploy_prod stage only when branch is master
-  only:
+packages-staging:
+  stage: build 
+  # The except clause exempts the build stage from being run when changes committed to master
+  except:
     - main
   script:
-    - echo $PWD
-    - docker load -i pipeline_utils/nso-6.2.5.container-image-dev.linux.x86_64.tar.gz
-    - docker compose -f pipeline_utils/compose.yml up -d
+    - echo "(Build 🏗️) Loading and compiling packages in the NSO dev container"
+
+
+package-load:
+  stage: build
+  when: on_success
+  except:
+    - main
+  script:
+    - echo "(Build 🏗️) Loading compiled packages to testing env NSO"
+
+
+loopback-implementation-service:
+  stage: test
+  when: on_success
+  except:
+    - main
+  script:
+  script:
+    - echo "(Test 🤖) Executing test for loopback-interface"
+
+release-publishing-📦:
+  stage: deliver
+  when: on_success
+  except:
+    - main
+  script:
+    - echo "(Deliver 📦) Generating zip"
+
+  # artifacts:
+  #   when: on_success
+  #   paths:
+  #    - $CI_PROJECT_DIR/package-artifact/nso-packages_$CI_COMMIT_REF_NAME.tar.gz
+
 
