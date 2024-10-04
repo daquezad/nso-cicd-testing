@@ -19,20 +19,31 @@ variables:
     NSO_TESTING_URL:  "http://10.10.20.47:8080/jsonrpc"
     NSO_DEVELOPMENT_URL:  "http://10.10.20.47:8080/jsonrpc"
     NSO_PRODUCTION_URL: "http://10.10.20.47:8080/jsonrpc"
+    NSO_DEV_PWD: "C1sco12345"
+    NSO_DEV_USER: "developer"
+    NSO_DEV_IP: "10.10.20.47"
 
-# Install any required python packages needed for the scripts
+# # Install any required python packages needed for the scripts
 before_script:
   - pip install requests
   - ansible-galaxy collection install cisco.nso
+  - 'which sshpass || ( apt-get update -y && apt-get install sshpass -y )'
+  - 'which scp || ( apt-get update -y && apt-get install openssh-client -y )'
 
 packages-staging:
   stage: build 
+  when: on_success
   # The except clause exempts the build stage from being run when changes committed to master
   except:
     - main
   script:
     - echo "(Build 🏗️) Loading and compiling packages in the NSO dev container"
-
+    # - scp -r packages/loopback $NSO_DEV_USER@$NSO_DEV_IP:/home/developer/loopback
+    # - ssh $SSH_USER@$VM_IPADDRESS "hostname && echo 'Welcome!!!"
+    # - sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no your_remote_username@your_remote_host "ls -la"
+    # - sshpass -p "C1sco12345" scp -o StrictHostKeyChecking=no -r packages/loopback developer@10.10.20.47:/home/developer/loopback
+    - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no developer@10.10.20.47 "echo 'saludos'"
+    - sshpass -p "C1sco12345" scp -o StrictHostKeyChecking=no -r packages/loopback developer@10.10.20.47:/home/developer/loopback
 
 package-load:
   stage: build
@@ -41,7 +52,6 @@ package-load:
     - main
   script:
     - echo "(Build 🏗️) Loading compiled packages to testing env NSO"
-
 
 loopback-implementation-service:
   stage: test
@@ -77,9 +87,9 @@ cleanup-🗑️:
     - echo "(Cleanup 🗑️) Removing files from NSO Dev"
 
 deploy-production-📬:
-  stage: deploy
+  stage: deploy_prod
   when: on_success
   only:
     - main
   script:
-    - echo "(Deploy 📬) Deployment in production.
+    - echo "(Deploy📬) Deployment in production."
