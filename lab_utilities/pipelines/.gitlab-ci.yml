@@ -3,47 +3,45 @@
 #
 # Pipeline definition for gitlab-runner
 #
-# This pipeline defined gives a practical example of the steps and workflow for updating, testing, and deploying an NSO service package.
 
 include:
-  - '/pipeline_utils/environments.yml' 
+  - '/pipeline_utils/environments.yml'
 
 stages:
-  - build 
-  - test 
+  - build
+  - test
   - deliver
   - cleanup
   - deploy_prod
 
 variables:
-    NSO_TESTING_URL:  "http://10.10.20.47:8080/jsonrpc"
-    NSO_DEVELOPMENT_URL:  "http://10.10.20.47:8080/jsonrpc"
-    NSO_PRODUCTION_URL: "http://10.10.20.47:8080/jsonrpc"
+# TODO: Pre-load variables into gitlab 
+    NSO_TESTING_URL:  "http://10.10.20.47:8080/"
+    NSO_DEVELOPMENT_URL:  "http://10.10.20.47:8080/"
+    NSO_PRODUCTION_URL: "http://10.10.20.47:8080/"
     NSO_DEV_PWD: "C1sco12345"
     NSO_DEV_USER: "developer"
     NSO_DEV_IP: "10.10.20.47"
 
-# # Install any required python packages needed for the scripts
+# Install any required python packages needed for the scripts
 before_script:
   - pip install requests
   - ansible-galaxy collection install cisco.nso
   - 'which sshpass || ( apt-get update -y && apt-get install sshpass -y )'
   - 'which scp || ( apt-get update -y && apt-get install openssh-client -y )'
+  - 'which lftp || ( apt-get update -y && apt-get install lftp -y )'
 
 packages-staging:
-  stage: build 
+  stage: build
   when: on_success
-  # The except clause exempts the build stage from being run when changes committed to master
   except:
     - main
   script:
+  # TODO: validate scp command and compiling package
     - echo "(Build 🏗️) Loading and compiling packages in the NSO dev container"
-    # - scp -r packages/loopback $NSO_DEV_USER@$NSO_DEV_IP:/home/developer/loopback
-    # - ssh $SSH_USER@$VM_IPADDRESS "hostname && echo 'Welcome!!!"
-    # - sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no your_remote_username@your_remote_host "ls -la"
-    # - sshpass -p "C1sco12345" scp -o StrictHostKeyChecking=no -r packages/loopback developer@10.10.20.47:/home/developer/loopback
-    - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no developer@10.10.20.47 "echo 'saludos'"
-    - sshpass -p "C1sco12345" scp -o StrictHostKeyChecking=no -r packages/loopback developer@10.10.20.47:/home/developer/loopback
+    # - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "echo 'saludos'"
+    # - sshpass -p "C1sco12345" /usr/bin/scp -o StrictHostKeyChecking=no -r packages/loopback developer@10.10.20.47:/home/developer/loopback
+
 
 package-load:
   stage: build
@@ -52,6 +50,8 @@ package-load:
     - main
   script:
     - echo "(Build 🏗️) Loading compiled packages to testing env NSO"
+    - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "source /opt/ncs/ncs-6.2.5/ncsrc && echo 'packages reload' | ncs_cli -Cu admin"
+
 
 loopback-implementation-service:
   stage: test
@@ -59,8 +59,11 @@ loopback-implementation-service:
   except:
     - main
   script:
-  script:
-    - echo "(Test 🤖) Executing test for loopback-interface"
+    - echo "(Test 🤖) Deploying service in the NSO test env"
+    # TODO: validate running test in NSO test env fro pipeline
+    # - cd tests/loopback-test && python3 loopback-test.py --nso_url $NSO_TESTING_URL --device "core-rtr01"
+
+
 
 release-publishing-📦:
   stage: deliver
@@ -69,11 +72,10 @@ release-publishing-📦:
     - main
   script:
     - echo "(Deliver 📦) Generating zip"
-    - "echo 'test' > file.txt"
-  artifacts:
-    expose_as: 'artifact 1'
-    paths: ['file.txt']
-
+# TODO: Validate ziping package
+  #   - sshpass -p "C1sco12345" /usr/bin/scp -o StrictHostKeyChecking=no -r $NSO_DEV_USER@$NSO_DEV_IP:/nso/run/packages/$PACKAGE ../package-artifact/
+  #   - cd ../package-artifact/ && ls
+  #   - tar -czvf nso-packages_$CI_COMMIT_REF_NAME.tar.gz .
   # artifacts:
   #   when: on_success
   #   paths:
@@ -85,6 +87,7 @@ cleanup-🗑️:
   allow_failure: true
   script:
     - echo "(Cleanup 🗑️) Removing files from NSO Dev"
+    - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "rm -r packages"
 
 deploy-production-📬:
   stage: deploy_prod
@@ -93,3 +96,8 @@ deploy-production-📬:
     - main
   script:
     - echo "(Deploy📬) Deployment in production."
+    # TODO: Validate scp command and loading package in prod env
+#     - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "cd /home/developer/packages && tar -xvf nso-packages_$CI_COMMIT_REF_NAME.tar.gz"
+#     - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "cd /home/developer/packages && rm -rf *.tar.gz"
+#     - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "cd /home/developer/packages && cp -a . /nso/run/packages"
+#     - sshpass -p "$NSO_DEV_PWD" ssh -o StrictHostKeyChecking=no $NSO_DEV_USER@$NSO_DEV_IP "source /opt/ncs/ncs-6.2.5/ncsrc && echo 'packages reload' | ncs_cli -Cu admin"

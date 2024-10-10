@@ -40,7 +40,7 @@ class CommonSetup(aetest.CommonSetup):
             ping_targets = yaml.safe_load(f)
         self.parent.parameters.update(ping_targets = ping_targets)
     
-@aetest.loop(device=('core-rtr01', 'core-rtr02', 'dist-rtr01', 'dist-rtr02'))
+@aetest.loop(device=('core-rtr01', 'dist-rtr01'))
 class PingTestCase(aetest.Testcase):
     
     @aetest.setup
