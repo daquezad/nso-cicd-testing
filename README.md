@@ -26,6 +26,8 @@ The pipeline definition file, stored in the pipelines folder as *.gitlab-ci.yml*
 
 ## Folder Structure
 
-pipelines/: Contains the pipeline definition file.
-packages/: Contains the NSO package (loopback).
-tests/: Contains testing files using PyATS.
+`pipelines/`: Contains the pipeline definition file.
+
+`packages/`: Contains the NSO package (loopback).
+
+`tests/`: Contains testing files using PyATS.
